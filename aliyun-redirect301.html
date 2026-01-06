@@ -1717,7 +1717,7 @@
                     code += '        if eq($uri, k){\n';
                     code += '            rewrite(v, \'redirect\', 301)}\n';
                     code += '        if eq($uri, k){\n';
-                    code += '            rewrite(v, \'redirect:enhance\', 301)}\n';
+                    code += '            rewrite(v, \'enhance_redirect\', 301)}\n';
                     code += '    }\n';
                     code += '}\n';
                     code += 'for_func()\n';
@@ -1848,8 +1848,8 @@
                     const wwwHost = host.startsWith('www.') ? host : 'www.' + host;
                     const nonWwwHost = host.startsWith('www.') ? host.substring(4) : host;
 
-                    code += `        if and(eq($host, '${host}')), eq($uri, k)) {\n`;
-                    code += `            rewrite(v, \'redirect:enhance\', 301)\n`;
+                    code += `        if and(eq($host, '${host}'), eq($uri, k)) {\n`;
+                    code += `            rewrite(v, \'enhance_redirect\', 301)\n`;
                     code += '        }\n';
                     code += '    }\n';
                     code += '}\n\n';
@@ -1970,8 +1970,8 @@
                         code += ']\n\n';
                         code += 'def process_language_redirects() {\n';
                         code += `    for k, v in redirect_uri {\n`;
-                        code += `        if and(eq($host, '${host}')), eq($uri, k)) {\n`;
-                        code += `            rewrite(v, \'redirect:enhance\', 301)\n`;
+                        code += `        if and(eq($host, '${host}'), eq($uri, k)) {\n`;
+                        code += `            rewrite(v, \'enhance_redirect\', 301)\n`;
                         code += '        }\n';
                         code += '    }\n';
                         code += '}\n\n';
