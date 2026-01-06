@@ -489,6 +489,59 @@
                 width: 55%;
             }
 
+            .preview-table td:nth-child(3),
+            .preview-table th:nth-child(3) {
+                width: 15%;
+                text-align: center;
+            }
+
+            .status-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+                text-align: center;
+                min-width: 50px;
+            }
+
+            .status-200 {
+                background: rgba(52, 199, 89, 0.15);
+                color: var(--success-color);
+                border: 1px solid rgba(52, 199, 89, 0.3);
+            }
+
+            .status-301 {
+                background: rgba(255, 149, 0, 0.15);
+                color: var(--warning-color);
+                border: 1px solid rgba(255, 149, 0, 0.3);
+            }
+
+            .status-302 {
+                background: rgba(0, 122, 255, 0.15);
+                color: var(--primary-color);
+                border: 1px solid rgba(0, 122, 255, 0.3);
+            }
+
+            .status-404 {
+                background: rgba(255, 59, 48, 0.15);
+                color: var(--danger-color);
+                border: 1px solid rgba(255, 59, 48, 0.3);
+            }
+
+            .status-error {
+                background: rgba(142, 142, 147, 0.15);
+                color: var(--text-tertiary);
+                border: 1px solid rgba(142, 142, 147, 0.3);
+            }
+
+            .status-testing {
+                background: rgba(255, 149, 0, 0.15);
+                color: var(--warning-color);
+                border: 1px solid rgba(255, 149, 0, 0.3);
+                animation: pulse 1s ease-in-out infinite;
+            }
+
             /* 文件图标显示区域 */
             .file-icon-display {
                 display: none;
@@ -602,6 +655,48 @@
                 cursor: not-allowed;
                 transform: none !important;
                 box-shadow: none !important;
+            }
+
+            .test-links-btn {
+                background: linear-gradient(135deg,
+                        var(--success-color) 0%,
+                        #28a745 100%);
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 50px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: var(--transition-bounce);
+                position: relative;
+                overflow: hidden;
+                letter-spacing: 0.5px;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            }
+
+            .test-links-btn:hover:not(:disabled) {
+                transform: translateY(-3px) scale(1.02);
+                box-shadow:
+                    0 10px 25px rgba(52, 199, 89, 0.3),
+                    0 0 0 5px rgba(52, 199, 89, 0.1);
+            }
+
+            .test-links-btn:active:not(:disabled) {
+                transform: translateY(-1px) scale(0.98);
+            }
+
+            .test-links-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            .test-links-btn.testing {
+                background: linear-gradient(135deg,
+                        var(--warning-color) 0%,
+                        #e67e22 100%);
             }
 
             /* 结果区域 */
@@ -1237,6 +1332,12 @@
                             </div>
                             <div class="data-preview">
                                 <strong>数据预览 (前5行):</strong>
+                                <div style="margin-bottom: 15px;">
+                                    <button id="testLinksBtn" class="test-links-btn" disabled>
+                                        🔗 测试所有链接状态
+                                    </button>
+                                    <span id="testProgress" style="margin-left: 15px; color: var(--text-secondary); font-size: 14px;"></span>
+                                </div>
                                 <table class="preview-table" id="previewTable">
                                     <thead>
                                         <tr id="previewHeader"></tr>
@@ -1327,11 +1428,13 @@
                 const uploadContainer = document.getElementById('uploadContainer');
                 const backButtonContainer = document.getElementById('backButtonContainer');
                 const backBtn = document.getElementById('backBtn');
+                const testLinksBtn = document.getElementById('testLinksBtn');
+                const testProgress = document.getElementById('testProgress');
 
                 if (!fileInput || !dropArea || !fileIconDisplay || !displayFileName || !processBtn || !loading || !fileInfo ||
                     !multiResultBox || !singleResultBox || !multiCopyBtn || !singleCopyBtn ||
                     !multiPreviewBtn || !singlePreviewBtn || !languageResultContainer || !errorMessage ||
-                    !uploadContainer || !backButtonContainer || !backBtn) {
+                    !uploadContainer || !backButtonContainer || !backBtn || !testLinksBtn || !testProgress) {
                     console.error('某些必要的 DOM 元素未找到');
                     return;
                 }
@@ -1351,6 +1454,7 @@
                 multiPreviewBtn.addEventListener('click', () => toggleCodePreview('multi'));
                 singlePreviewBtn.addEventListener('click', () => toggleCodePreview('single'));
                 backBtn.addEventListener('click', handleBack);
+                testLinksBtn.addEventListener('click', testAllLinks);
 
                 function initializeDragDrop(dropArea, fileInput) {
                     dropArea.addEventListener('click', () => fileInput.click());
@@ -1422,6 +1526,8 @@
                     fileInput.value = '';
                     excelData = null;
                     processBtn.disabled = true;
+                    testLinksBtn.disabled = true;
+                    testProgress.textContent = '';
                     fileInfo.classList.remove('show');
                     dropArea.classList.remove('collapsed');
                     fileIconDisplay.classList.remove('show');
@@ -1470,6 +1576,7 @@
                     const previewHeader = document.getElementById('previewHeader');
                     const previewBody = document.getElementById('previewBody');
                     const fileColumns = document.getElementById('fileColumns');
+                    const testLinksBtn = document.getElementById('testLinksBtn');
 
                     if (!previewHeader || !previewBody || !fileColumns) {
                         console.error('预览元素未找到');
@@ -1489,7 +1596,13 @@
                         previewHeader.appendChild(th);
                     });
 
+                    const statusTh = document.createElement('th');
+                    statusTh.textContent = '状态';
+                    previewHeader.appendChild(statusTh);
+
                     const previewRows = Math.min(5, data.length - 1);
+                    let hasValidUrl = false;
+
                     for (let i = 1; i <= previewRows && i < data.length; i++) {
                         const row = data[i] || [];
                         const tr = document.createElement('tr');
@@ -1506,10 +1619,24 @@
                             tr.appendChild(td);
                         }
 
+                        const statusTd = document.createElement('td');
+                        statusTd.innerHTML = '<span class="status-badge status-error">未测试</span>';
+                        const url = row[0] || '';
+                        statusTd.setAttribute('data-url', url);
+                        tr.appendChild(statusTd);
+
                         previewBody.appendChild(tr);
+
+                        if (url) {
+                            hasValidUrl = true;
+                        }
                     }
 
                     fileInfo.classList.add('show');
+
+                    if (testLinksBtn && hasValidUrl) {
+                        testLinksBtn.disabled = false;
+                    }
                 }
 
                 function processExcel() {
@@ -1578,6 +1705,7 @@
                     dropArea.classList.remove('collapsed');
                     fileIconDisplay.classList.remove('show');
                     processBtn.disabled = true;
+                    testLinksBtn.disabled = true;
 
                     excelData = null;
                     multiDomainHost = null;
@@ -1585,6 +1713,103 @@
                     languageFullHostMappings = null;
 
                     clearError();
+                }
+
+                function testAllLinks() {
+                    if (!excelData || excelData.length < 2) {
+                        showError('没有可测试的链接');
+                        return;
+                    }
+
+                    const previewBody = document.getElementById('previewBody');
+                    const rows = previewBody.querySelectorAll('tr');
+                    const urls = [];
+
+                    rows.forEach(row => {
+                        const statusCell = row.querySelector('td[data-url]');
+                        if (statusCell) {
+                            const url = statusCell.getAttribute('data-url');
+                            if (url) {
+                                urls.push({
+                                    url: url,
+                                    cell: statusCell
+                                });
+                            }
+                        }
+                    });
+
+                    if (urls.length === 0) {
+                        showError('没有找到可测试的链接');
+                        return;
+                    }
+
+                    testLinksBtn.disabled = true;
+                    testLinksBtn.classList.add('testing');
+                    testLinksBtn.textContent = '⏳ 测试中...';
+
+                    let completed = 0;
+                    const total = urls.length;
+
+                    urls.forEach((item, index) => {
+                        setTimeout(() => {
+                            testSingleLink(item.url, item.cell);
+                            completed++;
+                            testProgress.textContent = `测试进度: ${completed}/${total}`;
+
+                            if (completed === total) {
+                                testLinksBtn.disabled = false;
+                                testLinksBtn.classList.remove('testing');
+                                testLinksBtn.textContent = '🔗 测试所有链接状态';
+                                testProgress.textContent = '测试完成！';
+                            }
+                        }, index * 500);
+                    });
+                }
+
+                function testSingleLink(url, cell) {
+                    const statusBadge = cell.querySelector('.status-badge');
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-testing';
+                        statusBadge.textContent = '测试中';
+                    }
+
+                    fetch(url, {
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        cache: 'no-cache'
+                    })
+                    .then(response => {
+                        const status = response.status;
+                        updateStatusBadge(statusBadge, status);
+                    })
+                    .catch(error => {
+                        console.error('测试链接失败:', url, error);
+                        updateStatusBadge(statusBadge, null);
+                    });
+                }
+
+                function updateStatusBadge(badge, status) {
+                    if (!badge) return;
+
+                    if (status === 200) {
+                        badge.className = 'status-badge status-200';
+                        badge.textContent = '200 OK';
+                    } else if (status === 301) {
+                        badge.className = 'status-badge status-301';
+                        badge.textContent = '301';
+                    } else if (status === 302) {
+                        badge.className = 'status-badge status-302';
+                        badge.textContent = '302';
+                    } else if (status === 404) {
+                        badge.className = 'status-badge status-404';
+                        badge.textContent = '404';
+                    } else if (status) {
+                        badge.className = 'status-badge status-error';
+                        badge.textContent = status;
+                    } else {
+                        badge.className = 'status-badge status-error';
+                        badge.textContent = '错误';
+                    }
                 }
 
                 function processMultiDomainData(data) {
@@ -1804,7 +2029,7 @@
                     const nonWwwHost = host.startsWith('www.') ? host.substring(4) : host;
 
                     code += `        if and(eq($host, '${host}')), eq($uri, k)) {\n`;
-                    code += `            rewrite(v, 'enhance_redirect', 301)\n`;
+                    code += `            rewrite(v, 'redirect:enhance', 301)\n`;
                     code += '        }\n';
                     code += '    }\n';
                     code += '}\n\n';
@@ -1926,7 +2151,7 @@
                         code += 'def process_language_redirects() {\n';
                         code += `    for k, v in redirect_uri {\n`;
                         code += `        if and(eq($host, '${host}')), eq($uri, k)) {\n`;
-                        code += `            rewrite(v, 'enhance_redirect', 301)\n`;
+                        code += `            rewrite(v, 'redirect:enhance', 301)\n`;
                         code += '        }\n';
                         code += '    }\n';
                         code += '}\n\n';
