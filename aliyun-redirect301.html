@@ -1,0 +1,2321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>阿里云EdgeScript生成器 - 多域名与单域名重定向</title>
+        <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+        <style>
+            :root {
+                --primary-color: #007AFF;
+                --primary-light: #409CFF;
+                --primary-dark: #0056CC;
+                --secondary-color: #5856D6;
+                --success-color: #34C759;
+                --warning-color: #FF9500;
+                --danger-color: #FF3B30;
+                --background-light: rgba(255, 255, 255, 0.7);
+                --background-dark: rgba(0, 0, 0, 0.1);
+                --glass-border: rgba(255, 255, 255, 0.18);
+                --text-primary: #1D1D1F;
+                --text-secondary: #86868B;
+                --text-tertiary: #8E8E93;
+                --shadow-light: 0 8px 32px rgba(0, 122, 255, 0.1);
+                --shadow-heavy: 0 20px 60px rgba(0, 0, 0, 0.15);
+                --radius-small: 14px;
+                --radius-medium: 20px;
+                --radius-large: 28px;
+                --transition-smooth: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+                --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+                min-height: 100vh;
+                padding: 20px;
+                background: linear-gradient(135deg,
+                        rgba(242, 242, 247, 0.95) 0%,
+                        rgba(229, 229, 234, 0.95) 50%,
+                        rgba(209, 209, 214, 0.95) 100%);
+                color: var(--text-primary);
+                position: relative;
+                overflow-x: hidden;
+            }
+
+            body::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background:
+                    radial-gradient(circle at 20% 80%, rgba(0, 122, 255, 0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(88, 86, 214, 0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 40% 40%, rgba(52, 199, 89, 0.1) 0%, transparent 50%);
+                z-index: -1;
+                animation: gradientShift 20s ease infinite alternate;
+            }
+
+            @keyframes gradientShift {
+
+                0%,
+                100% {
+                    transform: scale(1) rotate(0deg);
+                }
+
+                50% {
+                    transform: scale(1.2) rotate(180deg);
+                }
+            }
+
+            .container {
+                max-width: 1800px;
+                margin: 0 auto;
+                background: var(--background-light);
+                backdrop-filter: blur(40px) saturate(180%);
+                -webkit-backdrop-filter: blur(40px) saturate(180%);
+                border-radius: var(--radius-large);
+                border: 1px solid var(--glass-border);
+                box-shadow:
+                    var(--shadow-heavy),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+                    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+                position: relative;
+                animation: containerEntrance 0.8s cubic-bezier(0.215, 0.610, 0.355, 1) forwards;
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            @keyframes containerEntrance {
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .header {
+                background: linear-gradient(135deg,
+                        rgba(0, 122, 255, 0.9) 0%,
+                        rgba(88, 86, 214, 0.9) 100%);
+                color: white;
+                padding: 40px;
+                position: relative;
+                overflow: hidden;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .header::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle,
+                        rgba(255, 255, 255, 0.1) 0%,
+                        transparent 70%);
+                opacity: 0.3;
+                animation: pulse 8s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+
+                0%,
+                100% {
+                    transform: scale(1);
+                }
+
+                50% {
+                    transform: scale(1.1);
+                }
+            }
+
+            .header-content {
+                position: relative;
+                z-index: 2;
+            }
+
+            .header h1 {
+                font-size: 40px;
+                margin-bottom: 12px;
+                font-weight: 700;
+                letter-spacing: -0.5px;
+                text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+                animation: textGlow 3s ease-in-out infinite alternate;
+            }
+
+            @keyframes textGlow {
+                from {
+                    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+                }
+
+                to {
+                    text-shadow: 0 2px 20px rgba(255, 255, 255, 0.4);
+                }
+            }
+
+            .header-subtitle {
+                font-size: 18px;
+                opacity: 0.95;
+                margin-bottom: 8px;
+                font-weight: 400;
+            }
+
+            .header-tag {
+                display: inline-block;
+                background: rgba(255, 255, 255, 0.15);
+                backdrop-filter: blur(10px);
+                padding: 8px 20px;
+                border-radius: 50px;
+                font-size: 14px;
+                margin-top: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                animation: float 6s ease-in-out infinite;
+            }
+
+            @keyframes float {
+
+                0%,
+                100% {
+                    transform: translateY(0px);
+                }
+
+                50% {
+                    transform: translateY(-5px);
+                }
+            }
+
+            .main-content {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 40px;
+                padding: 40px;
+            }
+
+            .section-title {
+                font-size: 28px;
+                color: var(--text-primary);
+                margin-bottom: 30px;
+                padding-bottom: 15px;
+                position: relative;
+                font-weight: 600;
+                letter-spacing: -0.3px;
+            }
+
+            .section-title::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 60px;
+                height: 4px;
+                background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+                border-radius: 2px;
+                animation: lineWidth 2s ease infinite alternate;
+            }
+
+            @keyframes lineWidth {
+                from {
+                    width: 60px;
+                }
+
+                to {
+                    width: 120px;
+                }
+            }
+
+            /* 卡片样式 */
+            .card {
+                backdrop-filter: blur(20px) saturate(200%);
+                -webkit-backdrop-filter: blur(20px) saturate(200%);
+                border-radius: var(--radius-medium);
+                padding: 40px;
+                border: 1px solid var(--glass-border);
+                box-shadow: var(--shadow-light);
+                transition: var(--transition-bounce);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg,
+                        transparent,
+                        rgba(255, 255, 255, 0.3),
+                        transparent);
+                transition: left 0.7s ease;
+            }
+
+            .card:hover::before {
+                left: 100%;
+            }
+
+            .card:hover {
+                box-shadow:
+                    0 25px 50px rgba(0, 122, 255, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            }
+
+            /* 上传区域 */
+            .upload-area {
+                border: 2px dashed rgba(0, 122, 255, 0.3);
+                border-radius: var(--radius-medium);
+                padding: 60px 30px;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.5);
+                backdrop-filter: blur(10px);
+                cursor: pointer;
+                transition: var(--transition-smooth);
+                margin-bottom: 30px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .upload-area::after {
+                content: '';
+                position: absolute;
+                top: -2px;
+                left: -2px;
+                right: -2px;
+                bottom: -2px;
+                background: linear-gradient(45deg,
+                        var(--primary-color),
+                        var(--secondary-color),
+                        var(--primary-color));
+                background-size: 400% 400%;
+                border-radius: var(--radius-medium);
+                z-index: -1;
+                opacity: 0;
+                pointer-events: none;
+                animation: borderFlow 3s linear infinite;
+                transition: opacity 0.3s ease;
+            }
+
+            @keyframes borderFlow {
+                0% {
+                    background-position: 0% 50%;
+                }
+
+                50% {
+                    background-position: 100% 50%;
+                }
+
+                100% {
+                    background-position: 0% 50%;
+                }
+            }
+
+            .upload-area:hover::after {
+                opacity: 1;
+            }
+
+            .upload-area:hover .upload-desc {
+                color: #fff;
+            }
+
+            .upload-area.dragover {
+                background: rgba(0, 122, 255, 0.05);
+                border-color: var(--primary-color);
+                transform: scale(1.02);
+            }
+
+            .upload-icon {
+                font-size: 80px;
+                margin-bottom: 25px;
+                display: inline-block;
+                animation: iconFloat 3s ease-in-out infinite;
+                filter: drop-shadow(0 5px 15px rgba(0, 122, 255, 0.3));
+            }
+
+            @keyframes iconFloat {
+
+                0%,
+                100% {
+                    transform: translateY(0) scale(1);
+                }
+
+                50% {
+                    transform: translateY(-10px) scale(1.05);
+                }
+            }
+
+            .upload-title {
+                color: var(--text-primary);
+                margin-bottom: 15px;
+                font-size: 24px;
+                font-weight: 600;
+            }
+
+            .upload-desc {
+                color: var(--text-secondary);
+                font-size: 16px;
+                margin-bottom: 15px;
+                line-height: 1.6;
+                max-width: 600px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .drag-text {
+                color: var(--primary-color);
+                font-weight: 600;
+                margin-top: 20px;
+                display: block;
+                font-size: 14px;
+                opacity: 0.8;
+                transition: opacity 0.3s ease;
+            }
+
+            .upload-area:hover .drag-text {
+                opacity: 1;
+            }
+
+            /* 文件信息 */
+            .file-info {
+                background: rgba(255, 255, 255, 0.6);
+                backdrop-filter: blur(15px);
+                border: 1px solid var(--glass-border);
+                border-radius: var(--radius-medium);
+                padding: 30px;
+                margin-top: 25px;
+                display: none;
+                animation: slideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px) scale(0.95);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            .file-info.show {
+                display: block;
+            }
+
+            .file-details {
+                margin-bottom: 20px;
+                padding-bottom: 20px;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            }
+
+            .file-details strong {
+                color: var(--text-primary);
+                display: inline-block;
+                min-width: 100px;
+                font-weight: 600;
+            }
+
+            /* 数据预览表格 */
+            .data-preview {
+                margin-top: 20px;
+            }
+
+            .data-preview strong {
+                display: block;
+                margin-bottom: 15px;
+                color: var(--text-primary);
+                font-weight: 600;
+            }
+
+            .preview-table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                background: rgba(255, 255, 255, 0.5);
+                border-radius: var(--radius-small);
+                overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            .preview-table thead {
+                background: linear-gradient(135deg,
+                        rgba(0, 122, 255, 0.1) 0%,
+                        rgba(88, 86, 214, 0.1) 100%);
+            }
+
+            .preview-table th {
+                padding: 15px 20px;
+                text-align: left;
+                font-weight: 600;
+                color: var(--text-primary);
+                border-bottom: 2px solid rgba(0, 122, 255, 0.2);
+                font-size: 14px;
+            }
+
+            .preview-table td {
+                padding: 12px 20px;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+                color: var(--text-secondary);
+                font-size: 13px;
+                word-break: break-all;
+            }
+
+            .preview-table tbody tr:hover {
+                background: rgba(0, 122, 255, 0.05);
+            }
+
+            .preview-table tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .preview-table td:first-child,
+            .preview-table th:first-child {
+                border-right: 2px solid rgba(0, 122, 255, 0.15);
+                width: 45%;
+            }
+
+            .preview-table td:nth-child(2),
+            .preview-table th:nth-child(2) {
+                width: 55%;
+            }
+
+            /* 文件图标显示区域 */
+            .file-icon-display {
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 40px;
+                background: rgba(255, 255, 255, 0.6);
+                backdrop-filter: blur(15px);
+                border: 2px solid rgba(0, 122, 255, 0.3);
+                border-radius: var(--radius-medium);
+                margin-top: 25px;
+                cursor: pointer;
+                transition: var(--transition-smooth);
+                position: relative;
+            }
+
+            .file-icon-display.show {
+                display: flex;
+            }
+
+            .file-icon-display:hover {
+                background: rgba(255, 255, 255, 0.8);
+                border-color: var(--primary-color);
+                transform: scale(1.02);
+            }
+
+            .file-icon-display .excel-icon {
+                font-size: 60px;
+                margin-right: 20px;
+                filter: drop-shadow(0 5px 15px rgba(0, 122, 255, 0.3));
+            }
+
+            .file-icon-display .file-name {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--text-primary);
+                max-width: 400px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .file-icon-display .delete-hint {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 12px;
+                color: var(--danger-color);
+                background: rgba(255, 59, 48, 0.1);
+                padding: 5px 10px;
+                border-radius: 10px;
+                font-weight: 500;
+            }
+
+            .upload-area.collapsed {
+                display: none;
+            }
+
+            /* 按钮样式 */
+            .process-btn {
+                background: linear-gradient(135deg,
+                        var(--primary-color) 0%,
+                        var(--secondary-color) 100%);
+                color: white;
+                border: none;
+                padding: 20px 50px;
+                border-radius: 50px;
+                font-size: 18px;
+                font-weight: 600;
+                cursor: pointer;
+                width: 100%;
+                margin-top: 30px;
+                transition: var(--transition-bounce);
+                position: relative;
+                overflow: hidden;
+                letter-spacing: 0.5px;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            }
+
+            .process-btn::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg,
+                        transparent,
+                        rgba(255, 255, 255, 0.4),
+                        transparent);
+                transition: left 0.7s ease;
+            }
+
+            .process-btn:hover::before {
+                left: 100%;
+            }
+
+            .process-btn:hover {
+                transform: translateY(-5px) scale(1.02);
+                box-shadow:
+                    0 15px 30px rgba(0, 122, 255, 0.3),
+                    0 0 0 5px rgba(0, 122, 255, 0.1);
+            }
+
+            .process-btn:active {
+                transform: translateY(-2px) scale(0.98);
+            }
+
+            .process-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none !important;
+                box-shadow: none !important;
+            }
+
+            /* 结果区域 */
+            .result-area {
+                background: rgba(255, 255, 255, 0.5);
+                backdrop-filter: blur(20px);
+                border: 1px solid var(--glass-border);
+                margin-top: 40px;
+                overflow: hidden;
+                display: none;
+                animation: cardEntrance 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+
+            @keyframes cardEntrance {
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            .result-area.show {
+                display: block;
+                animation: cardEntrance 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+
+            .result-header {
+                background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.8) 0%,
+                        rgba(255, 255, 255, 0.6) 100%);
+                padding: 25px 30px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid var(--glass-border);
+            }
+
+            .result-header h3 {
+                font-size: 20px;
+                font-weight: 600;
+                color: var(--text-primary);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .result-header h3::before {
+                content: '✦';
+                color: var(--primary-color);
+                font-size: 24px;
+            }
+
+            .result-buttons {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+            .preview-btn {
+                background: rgba(255, 255, 255, 0.6);
+                backdrop-filter: blur(10px);
+                color: var(--secondary-color);
+                border: 1px solid var(--glass-border);
+                padding: 12px 25px;
+                border-radius: 50px;
+                cursor: pointer;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                transition: var(--transition-smooth);
+            }
+
+            .preview-btn:hover {
+                background: var(--secondary-color);
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(88, 86, 214, 0.3);
+            }
+
+            .copy-btn {
+                background: rgba(255, 255, 255, 0.6);
+                backdrop-filter: blur(10px);
+                color: var(--primary-color);
+                border: 1px solid var(--glass-border);
+                padding: 12px 25px;
+                border-radius: 50px;
+                cursor: pointer;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                transition: var(--transition-smooth);
+                font-size: 14px;
+            }
+
+            .copy-btn:hover {
+                background: rgba(0, 122, 255, 0.1);
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0, 122, 255, 0.2);
+            }
+
+            .copy-btn.copied {
+                background: var(--success-color);
+                color: white;
+                border-color: var(--success-color);
+            }
+
+            .code-container {
+                padding: 30px;
+                background: rgba(30, 30, 30, 0.9);
+                backdrop-filter: blur(20px);
+                color: #f0f0f0;
+                font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+                font-size: 15px;
+                line-height: 1.7;
+                overflow-x: auto;
+                max-height: 500px;
+                overflow-y: auto;
+                position: relative;
+                transition: max-height 0.5s ease, padding 0.5s ease;
+            }
+
+            .code-container.collapsed {
+                max-height: 0;
+                padding: 0 30px;
+                overflow: hidden;
+            }
+
+            .code-container::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: linear-gradient(90deg,
+                        transparent,
+                        rgba(255, 255, 255, 0.1),
+                        transparent);
+            }
+
+            .code-keyword {
+                color: #FF7AB2;
+                font-weight: 600;
+            }
+
+            .code-string {
+                color: #B5E8A5;
+            }
+
+            .code-comment {
+                color: #7A7A7A;
+                font-style: italic;
+            }
+
+            .code-function {
+                color: #79C0FF;
+            }
+
+            .code-operator {
+                color: #FF967D;
+            }
+
+            /* 统计卡片 */
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 25px;
+                margin-top: 40px;
+            }
+
+            .stat-card {
+                background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.4) 0%,
+                        rgba(255, 255, 255, 0.2) 100%);
+                backdrop-filter: blur(20px);
+                border-radius: var(--radius-medium);
+                padding: 30px;
+                text-align: center;
+                border: 1px solid var(--glass-border);
+                transition: var(--transition-bounce);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .stat-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(90deg,
+                        var(--primary-color),
+                        var(--secondary-color));
+                opacity: 0.7;
+                transition: height 0.3s ease;
+            }
+
+            .stat-card:hover::before {
+                height: 8px;
+            }
+
+            .stat-card:hover {
+                transform: translateY(-10px) scale(1.03);
+                box-shadow:
+                    0 20px 40px rgba(0, 122, 255, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            }
+
+            .stat-number {
+                font-size: 42px;
+                font-weight: 700;
+                color: var(--text-primary);
+                margin-bottom: 10px;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                position: relative;
+                display: inline-block;
+            }
+
+            .stat-number::after {
+                content: '';
+                position: absolute;
+                bottom: -5px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 40px;
+                height: 3px;
+                background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+                border-radius: 2px;
+                opacity: 0.7;
+            }
+
+            .stat-label {
+                font-size: 14px;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 1.5px;
+                font-weight: 600;
+                margin-top: 10px;
+            }
+
+            /* 语言子域名结果容器 */
+            #languageResultContainer {
+                margin-top: 40px;
+            }
+
+            /* 说明区域 */
+            .instructions {
+                background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.4) 0%,
+                        rgba(255, 255, 255, 0.2) 100%);
+                backdrop-filter: blur(20px);
+                border: 1px solid var(--glass-border);
+                padding: 35px;
+                margin-top: 40px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .instructions::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 100px;
+                height: 100px;
+                background: radial-gradient(circle at top right,
+                        rgba(0, 122, 255, 0.1),
+                        transparent 70%);
+                pointer-events: none;
+            }
+
+            .instructions h4 {
+                color: var(--text-primary);
+                margin-bottom: 25px;
+                font-size: 20px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .instructions h4::before {
+                content: '📘';
+                font-size: 24px;
+                filter: drop-shadow(0 2px 4px rgba(0, 122, 255, 0.2));
+            }
+
+            .instructions ul {
+                margin-left: 25px;
+                color: var(--text-secondary);
+            }
+
+            .instructions li {
+                margin-bottom: 15px;
+                line-height: 1.7;
+                position: relative;
+                padding-left: 10px;
+                transition: transform 0.3s ease;
+            }
+
+            .instructions li:hover {
+                transform: translateX(5px);
+            }
+
+            .instructions li::before {
+                content: '→';
+                position: absolute;
+                left: -20px;
+                color: var(--primary-color);
+                font-weight: bold;
+                transition: transform 0.3s ease;
+            }
+
+            .instructions li:hover::before {
+                transform: translateX(5px);
+            }
+
+            /* 返回按钮容器 */
+            .back-button-container {
+                display: flex;
+                justify-content: center;
+                padding: 20px;
+                margin-top: 20px;
+            }
+
+            .back-button-container.show {
+                display: flex;
+            }
+
+            .back-btn {
+                background: linear-gradient(135deg,
+                        var(--primary-color) 0%,
+                        var(--primary-dark) 100%);
+                color: white;
+                border: none;
+                padding: 12px 30px;
+                font-size: 16px;
+                font-weight: 600;
+                border-radius: var(--radius-medium);
+                cursor: pointer;
+                transition: var(--transition-smooth);
+                box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .back-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+            }
+
+            .back-btn:active {
+                transform: translateY(0);
+            }
+
+            /* 加载动画 */
+            .loading {
+                display: none;
+                text-align: center;
+                padding: 40px;
+            }
+
+            .loading.show {
+                display: block;
+            }
+
+            .spinner {
+                width: 60px;
+                height: 60px;
+                margin: 0 auto 20px;
+                position: relative;
+            }
+
+            .spinner::before,
+            .spinner::after {
+                content: '';
+                position: absolute;
+                border-radius: 50%;
+                animation: spinner 2s linear infinite;
+            }
+
+            .spinner::before {
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(135deg,
+                        transparent 30%,
+                        var(--primary-color) 100%);
+                box-shadow: 0 0 20px rgba(0, 122, 255, 0.3);
+            }
+
+            .spinner::after {
+                width: 85%;
+                height: 85%;
+                background: rgba(255, 255, 255, 0.9);
+                top: 7.5%;
+                left: 7.5%;
+            }
+
+            @keyframes spinner {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            /* 错误信息 */
+            .error-message {
+                background: linear-gradient(135deg,
+                        rgba(255, 59, 48, 0.1) 0%,
+                        rgba(255, 59, 48, 0.05) 100%);
+                backdrop-filter: blur(20px);
+                color: var(--danger-color);
+                padding: 20px 25px;
+                border-radius: var(--radius-medium);
+                margin-top: 25px;
+                display: none;
+                border: 1px solid rgba(255, 59, 48, 0.2);
+                animation: shakeError 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            }
+
+            @keyframes shakeError {
+
+                10%,
+                90% {
+                    transform: translateX(-1px);
+                }
+
+                20%,
+                80% {
+                    transform: translateX(2px);
+                }
+
+                30%,
+                50%,
+                70% {
+                    transform: translateX(-3px);
+                }
+
+                40%,
+                60% {
+                    transform: translateX(3px);
+                }
+            }
+
+            .error-message.show {
+                display: block;
+            }
+
+            /* 响应式调整 */
+            @media (max-width: 768px) {
+                .main-content {
+                    padding: 25px;
+                    gap: 25px;
+                }
+
+                .header {
+                    padding: 30px 25px;
+                }
+
+                .header h1 {
+                    font-size: 32px;
+                }
+
+                .card {
+                    padding: 25px;
+                }
+
+                .upload-area {
+                    padding: 40px 20px;
+                }
+
+                .upload-icon {
+                    font-size: 60px;
+                }
+
+                .stats-grid {
+                    grid-template-columns: 1fr;
+                    gap: 20px;
+                }
+            }
+
+            /* 分隔线 */
+            .divider {
+                height: 1px;
+                background: linear-gradient(90deg,
+                        transparent,
+                        var(--glass-border),
+                        transparent);
+                margin: 50px 0;
+                position: relative;
+            }
+
+            .divider::before {
+                content: '';
+                position: absolute;
+                top: -2px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 40px;
+                height: 5px;
+                background: linear-gradient(90deg,
+                        var(--primary-color),
+                        var(--secondary-color));
+                border-radius: 3px;
+            }
+
+            /* 标签样式 */
+            .type-tag {
+                display: inline-flex;
+                align-items: center;
+                background: linear-gradient(135deg,
+                        var(--primary-color) 0%,
+                        var(--secondary-color) 100%);
+                color: white;
+                padding: 6px 16px;
+                border-radius: 50px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-left: 15px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                animation: tagPulse 2s ease-in-out infinite;
+            }
+
+            @keyframes tagPulse {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: 0.7;
+                }
+            }
+
+            /* 粒子背景效果 */
+            .particles {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: -1;
+            }
+
+            .particle {
+                position: absolute;
+                background: rgba(0, 122, 255, 0.1);
+                border-radius: 50%;
+                animation: floatParticle 20s linear infinite;
+            }
+
+            @keyframes floatParticle {
+                0% {
+                    transform: translateY(100vh) rotate(0deg);
+                    opacity: 0;
+                }
+
+                10% {
+                    opacity: 0.5;
+                }
+
+                90% {
+                    opacity: 0.5;
+                }
+
+                100% {
+                    transform: translateY(-100px) rotate(720deg);
+                    opacity: 0;
+                }
+            }
+
+            /* 进度条动画 */
+            .progress-bar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 0%;
+                height: 3px;
+                background: linear-gradient(90deg,
+                        var(--primary-color),
+                        var(--secondary-color));
+                z-index: 1000;
+                transition: width 0.3s ease;
+                box-shadow: 0 0 10px var(--primary-color);
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="header-content">
+                    <h1>阿里云EdgeScript边缘脚本生成器</h1>
+                    <div class="header-subtitle">解析Excel数据，自动生成www和单域名重定向规则</div>
+                    <span class="header-tag">EdgeScript · 301重定向 · 自动生成代码</span>
+                </div>
+            </div>
+            <div class="main-content">
+                <!-- 上传区域容器 -->
+                <div class="upload-container" id="uploadContainer">
+                    <!-- 上传区域 -->
+                    <div class="card">
+                        <div class="section-title">
+                            Excel文件上传 <span class="type-tag">不处理第一行数据</span>
+                        </div>
+                        <div class="upload-area" id="dropArea">
+                            <div class="upload-icon">📁</div>
+                            <h3 class="upload-title">上传Excel文件</h3>
+                            <p class="upload-desc">上传Excel文件，自动生成www和单域名重定向代码</p>
+                            <p class="upload-desc"><strong>处理规则：</strong>第一列为源URL，第二列为目标URL</p>
+                            <span class="drag-text">点击或拖拽Excel文件到此处</span>
+                            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.csv">
+                        </div>
+                        <div class="file-icon-display" id="fileIconDisplay">
+                            <div class="excel-icon">📊</div>
+                            <div class="file-name" id="displayFileName"></div>
+                            <div class="delete-hint">点击删除重新上传</div>
+                        </div>
+                        <div class="file-info" id="fileInfo">
+                            <div class="file-details">
+                                <strong>已选择文件:</strong> <span id="fileName"></span>
+                                <br>
+                                <strong>文件大小:</strong> <span id="fileSize"></span>
+                                <br>
+                                <strong>检测到列:</strong> <span id="fileColumns"></span>
+                            </div>
+                            <div class="data-preview">
+                                <strong>数据预览 (前5行):</strong>
+                                <table class="preview-table" id="previewTable">
+                                    <thead>
+                                        <tr id="previewHeader"></tr>
+                                    </thead>
+                                    <tbody id="previewBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <button id="processBtn" class="process-btn" disabled>
+                            开始处理Excel文件
+                        </button>
+                        <div class="loading" id="loading">
+                            <div class="spinner"></div>
+                            正在处理Excel文件，请稍候...
+                        </div>
+                        <div class="error-message" id="errorMessage"></div>
+                    </div>
+                    <!-- 说明区域 -->
+                    <div class="instructions">
+                        <h4>📋 处理说明</h4>
+                        <ul>
+                            <li>从Excel第二行开始处理数据</li>
+                            <li>自动识别Excel需要处理的是单域名还是www还是小语种,可以混合写在Excel表格中</li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- 返回按钮 -->
+                <div class="back-button-container" id="backButtonContainer" style="display: none;">
+                    <button id="backBtn" class="back-btn">
+                        ← 返回重新上传
+                    </button>
+                </div>
+            </div>
+            <!-- 多域名结果区域 -->
+            <div class="result-area" id="multiResultBox">
+                <div class="result-header">
+                    <h3>www重定向代码</h3>
+                    <div class="result-buttons">
+                        <button id="multiPreviewBtn" class="preview-btn">
+                            预览
+                        </button>
+                        <button id="multiCopyBtn" class="copy-btn">
+                            复制代码
+                        </button>
+                    </div>
+                </div>
+                <div class="code-container collapsed" id="multiCodeContainer">
+                    <pre id="multiCodeOutput"># 处理完成后，代码将显示在这里...</pre>
+                </div>
+            </div>
+            <!-- 单域名结果区域 -->
+            <div class="result-area" id="singleResultBox">
+                <div class="result-header">
+                    <h3>单域名重定向代码（不带www）</h3>
+                    <div class="result-buttons">
+                        <button id="singlePreviewBtn" class="preview-btn">
+                            预览
+                        </button>
+                        <button id="singleCopyBtn" class="copy-btn">
+                            复制代码
+                        </button>
+                    </div>
+                </div>
+                <div class="code-container collapsed" id="singleCodeContainer">
+                    <pre id="singleCodeOutput"># 处理完成后，代码将显示在这里...</pre>
+                </div>
+            </div>
+            <!-- 语言子域名代码区域容器 -->
+            <div id="languageResultContainer"></div>
+        </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const fileInput = document.getElementById('fileInput');
+                const dropArea = document.getElementById('dropArea');
+                const fileIconDisplay = document.getElementById('fileIconDisplay');
+                const displayFileName = document.getElementById('displayFileName');
+                const processBtn = document.getElementById('processBtn');
+                const loading = document.getElementById('loading');
+                const fileInfo = document.getElementById('fileInfo');
+                const multiResultBox = document.getElementById('multiResultBox');
+                const singleResultBox = document.getElementById('singleResultBox');
+                const multiCopyBtn = document.getElementById('multiCopyBtn');
+                const singleCopyBtn = document.getElementById('singleCopyBtn');
+                const multiPreviewBtn = document.getElementById('multiPreviewBtn');
+                const singlePreviewBtn = document.getElementById('singlePreviewBtn');
+                const languageResultContainer = document.getElementById('languageResultContainer');
+                const errorMessage = document.getElementById('errorMessage');
+                const uploadContainer = document.getElementById('uploadContainer');
+                const backButtonContainer = document.getElementById('backButtonContainer');
+                const backBtn = document.getElementById('backBtn');
+
+                if (!fileInput || !dropArea || !fileIconDisplay || !displayFileName || !processBtn || !loading || !fileInfo ||
+                    !multiResultBox || !singleResultBox || !multiCopyBtn || !singleCopyBtn ||
+                    !multiPreviewBtn || !singlePreviewBtn || !languageResultContainer || !errorMessage ||
+                    !uploadContainer || !backButtonContainer || !backBtn) {
+                    console.error('某些必要的 DOM 元素未找到');
+                    return;
+                }
+
+                let excelData = null;
+                let activeCodeContainer = null;
+                let multiDomainHost = null;
+                let singleDomainHost = null;
+                let languageFullHostMappings = null;
+
+                initializeDragDrop(dropArea, fileInput);
+                fileIconDisplay.addEventListener('click', handleDeleteFile);
+
+                processBtn.addEventListener('click', processExcel);
+                multiCopyBtn.addEventListener('click', () => copyToClipboard('multi'));
+                singleCopyBtn.addEventListener('click', () => copyToClipboard('single'));
+                multiPreviewBtn.addEventListener('click', () => toggleCodePreview('multi'));
+                singlePreviewBtn.addEventListener('click', () => toggleCodePreview('single'));
+                backBtn.addEventListener('click', handleBack);
+
+                function initializeDragDrop(dropArea, fileInput) {
+                    dropArea.addEventListener('click', () => fileInput.click());
+
+                    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                        dropArea.addEventListener(eventName, preventDefaults, false);
+                        document.body.addEventListener(eventName, preventDefaults, false);
+                    });
+
+                    function preventDefaults(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+
+                    ['dragenter', 'dragover'].forEach(eventName => {
+                        dropArea.addEventListener(eventName, highlight, false);
+                    });
+
+                    ['dragleave', 'drop'].forEach(eventName => {
+                        dropArea.addEventListener(eventName, unhighlight, false);
+                    });
+
+                    function highlight(e) {
+                        dropArea.classList.add('dragover');
+                    }
+
+                    function unhighlight(e) {
+                        dropArea.classList.remove('dragover');
+                    }
+
+                    dropArea.addEventListener('drop', handleDrop, false);
+
+                    function handleDrop(e) {
+                        const dt = e.dataTransfer;
+                        const files = dt.files;
+
+                        if (files.length > 0) {
+                            handleFile(files[0]);
+                        }
+                    }
+
+                    fileInput.addEventListener('change', (e) => {
+                        if (e.target.files.length) {
+                            handleFile(e.target.files[0]);
+                        }
+                    });
+                }
+
+                function handleFile(file) {
+                    const fileExt = file.name.split('.').pop().toLowerCase();
+                    if (!['xlsx', 'xls', 'csv'].includes(fileExt)) {
+                        showError('请选择Excel文件 (.xlsx, .xls, .csv)');
+                        return;
+                    }
+
+                    processBtn.disabled = false;
+                    displayFileInfo(file);
+                    displayFileIcon(file);
+                    previewExcel(file);
+                }
+
+                function displayFileIcon(file) {
+                    displayFileName.textContent = file.name;
+                    dropArea.classList.add('collapsed');
+                    fileIconDisplay.classList.add('show');
+                }
+
+                function handleDeleteFile() {
+                    fileInput.value = '';
+                    excelData = null;
+                    processBtn.disabled = true;
+                    fileInfo.classList.remove('show');
+                    dropArea.classList.remove('collapsed');
+                    fileIconDisplay.classList.remove('show');
+                    clearError();
+                }
+
+                function displayFileInfo(file) {
+                    const fileName = document.getElementById('fileName');
+                    const fileSize = document.getElementById('fileSize');
+
+                    if (fileName) fileName.textContent = file.name;
+                    if (fileSize) fileSize.textContent = formatFileSize(file.size);
+                }
+
+                function previewExcel(file) {
+                    const reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                            excelData = jsonData;
+                            showPreview(jsonData);
+                        } catch (error) {
+                            showError('读取Excel文件失败: ' + error.message);
+                        }
+                    };
+
+                    reader.onerror = function () {
+                        showError('读取文件失败');
+                    };
+
+                    reader.readAsArrayBuffer(file);
+                }
+
+                function showPreview(data) {
+                    if (!data || data.length === 0) {
+                        fileInfo.classList.remove('show');
+                        return;
+                    }
+
+                    const previewHeader = document.getElementById('previewHeader');
+                    const previewBody = document.getElementById('previewBody');
+                    const fileColumns = document.getElementById('fileColumns');
+
+                    if (!previewHeader || !previewBody || !fileColumns) {
+                        console.error('预览元素未找到');
+                        return;
+                    }
+
+                    previewHeader.innerHTML = '';
+                    previewBody.innerHTML = '';
+
+                    const colCount = data[0] ? data[0].length : 0;
+                    fileColumns.textContent = colCount + ' 列';
+
+                    const headerRow = data[0] || [];
+                    headerRow.forEach((cell, index) => {
+                        const th = document.createElement('th');
+                        th.textContent = cell || `列${index + 1}`;
+                        previewHeader.appendChild(th);
+                    });
+
+                    const previewRows = Math.min(5, data.length - 1);
+                    for (let i = 1; i <= previewRows && i < data.length; i++) {
+                        const row = data[i] || [];
+                        const tr = document.createElement('tr');
+
+                        row.forEach(cell => {
+                            const td = document.createElement('td');
+                            td.textContent = cell || '';
+                            tr.appendChild(td);
+                        });
+
+                        while (tr.cells.length < headerRow.length) {
+                            const td = document.createElement('td');
+                            td.textContent = '';
+                            tr.appendChild(td);
+                        }
+
+                        previewBody.appendChild(tr);
+                    }
+
+                    fileInfo.classList.add('show');
+                }
+
+                function processExcel() {
+                    if (!excelData || excelData.length < 2) {
+                        showError('Excel文件数据不足，至少需要2行数据（包含表头）');
+                        return;
+                    }
+
+                    loading.classList.add('show');
+                    processBtn.disabled = true;
+                    clearError();
+
+                    setTimeout(() => {
+                        try {
+                            const multiResult = processMultiDomainData(excelData);
+                            const singleResult = processSingleDomainData(excelData, multiResult.mappings);
+                            const languageResult = processLanguageSubdomainData(excelData);
+
+                            displayResult(multiResult, 'multi');
+                            displayResult(singleResult, 'single');
+
+                            updateStats(multiResult);
+
+                            console.log('www域名有效数据:', multiResult.validCount);
+                            console.log('单域名有效数据:', singleResult.validCount);
+
+                            if (multiResult.validCount > 0) {
+                                multiResultBox.classList.add('show');
+                            }
+
+                            if (singleResult.validCount > 0) {
+                                singleResultBox.classList.add('show');
+                            }
+
+                            if (languageResult.languageSubdomains && languageResult.languageSubdomains.length > 0) {
+                                languageFullHostMappings = languageResult.languageFullHostMappings;
+                                displayLanguageResults(languageResult);
+                            }
+
+                            uploadContainer.style.display = 'none';
+                            backButtonContainer.style.display = 'flex';
+
+                        } catch (error) {
+                            showError('处理Excel数据时出错: ' + error.message);
+                        } finally {
+                            loading.classList.remove('show');
+                            processBtn.disabled = false;
+                        }
+                    }, 500);
+                }
+
+                function handleBack() {
+                    uploadContainer.style.display = 'block';
+                    backButtonContainer.style.display = 'none';
+
+                    multiResultBox.classList.remove('show');
+                    singleResultBox.classList.remove('show');
+
+                    languageResultContainer.innerHTML = '';
+
+                    document.getElementById('multiCodeOutput').textContent = '# 处理完成后，代码将显示在这里...';
+                    document.getElementById('singleCodeOutput').textContent = '# 处理完成后，代码将显示在这里...';
+
+                    fileInput.value = '';
+                    fileInfo.style.display = 'none';
+                    dropArea.classList.remove('collapsed');
+                    fileIconDisplay.classList.remove('show');
+                    processBtn.disabled = true;
+
+                    excelData = null;
+                    multiDomainHost = null;
+                    singleDomainHost = null;
+                    languageFullHostMappings = null;
+
+                    clearError();
+                }
+
+                function processMultiDomainData(data) {
+                    const mappings = [];
+                    let processedCount = 0;
+                    let validCount = 0;
+                    let detectedHost = null;
+
+                    for (let i = 1; i < data.length; i++) {
+                        const row = data[i] || [];
+                        if (row.length < 2) continue;
+
+                        processedCount++;
+
+                        const col1 = String(row[0] || '').trim();
+                        const col2 = String(row[1] || '').trim();
+
+                        if (!col1 || !col2) continue;
+
+                        const { host } = extractHostAndUri(col1);
+
+                        if (!host) continue;
+
+                        const hostParts = host.split('.');
+                        if (hostParts.length >= 2) {
+                            const firstPart = hostParts[0];
+                            if (firstPart !== 'www') {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+
+                        if (!detectedHost) {
+                            detectedHost = host;
+                        }
+
+                        let k = extractPathOnly(col1);
+                        let v = extractPathOnly(col2);
+
+                        if (k === null || v === null) continue;
+
+                        if (k === '') k = '/';
+                        if (v === '') v = '/';
+
+                        if (k === '/' && v === '/') continue;
+
+                        mappings.push({
+                            k,
+                            v,
+                            sourceUrl: col1,
+                            targetUrl: col2
+                        });
+                        validCount++;
+                    }
+
+                    const code = generateMultiDomainCode(mappings);
+
+                    multiDomainHost = detectedHost;
+                    console.log('www域名检测到的host:', multiDomainHost);
+
+                    return {
+                        mappings,
+                        code,
+                        processedCount,
+                        validCount,
+                        totalCount: data.length - 1,
+                        host: detectedHost
+                    };
+                }
+
+                function generateMultiDomainCode(mappings) {
+                    let code = '';
+                    code += 'redirect_uri = [\n';
+
+                    mappings.forEach((item, index) => {
+                        const isLast = index === mappings.length - 1;
+                        const comma = isLast ? '' : ',';
+                        code += `    '${item.k}' = '${item.v}'${comma}\n`;
+                    });
+
+                    code += ']\n\n';
+                    code += 'def for_func(){\n';
+                    code += '    for k, v in redirect_uri{\n';
+                    code += '        if eq($uri, k){\n';
+                    code += '            rewrite(v, \'redirect\', 301)}\n';
+                    code += '        if eq($uri, k){\n';
+                    code += '            rewrite(v, \'redirect:enhance\', 301)}\n';
+                    code += '    }\n';
+                    code += '}\n';
+                    code += 'for_func()\n';
+                    return code;
+                }
+
+                function processSingleDomainData(data, multiMappings = []) {
+                    const mappings = [];
+                    let processedCount = 0;
+                    let validCount = 0;
+                    let targetHost = null;
+
+                    for (let i = 1; i < data.length; i++) {
+                        const row = data[i] || [];
+                        if (row.length < 2) continue;
+
+                        processedCount++;
+
+                        const col1 = String(row[0] || '').trim();
+                        const col2 = String(row[1] || '').trim();
+
+                        if (!col1 || !col2) continue;
+
+                        const { host, uri } = extractHostAndUri(col1);
+
+                        if (!host || !uri) continue;
+
+                        const targetUrl = col2;
+
+                        const hostParts = host.split('.');
+                        if (hostParts.length >= 2) {
+                            const firstPart = hostParts[0];
+                            if (firstPart === 'www') {
+                                continue;
+                            }
+                            if (/^[a-z]{2}$/.test(firstPart)) {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+
+                        if (!targetHost) {
+                            targetHost = host;
+                        }
+
+                        if (host !== targetHost) {
+                            console.warn(`发现不同源域名: ${host} (预期: ${targetHost})`);
+                        }
+
+                        if (uri === '/' && extractPathOnly(targetUrl) === '/') continue;
+
+                        mappings.push({
+                            host,
+                            uri,
+                            targetUrl
+                        });
+                        validCount++;
+                    }
+
+                    if (multiMappings.length > 0) {
+                        console.log('www映射数量:', multiMappings.length);
+                        console.log('当前targetHost:', targetHost);
+                        console.log('multiDomainHost:', multiDomainHost);
+
+                        if (!targetHost) {
+                            targetHost = multiDomainHost ? multiDomainHost.substring(4) : null;
+                            console.log('从www域名提取的单域名:', targetHost);
+                        }
+
+                        multiMappings.forEach(item => {
+                            const k = item.k;
+                            const v = item.v;
+
+                            if (k === '/' && v === '/') return;
+
+                            const existingMapping = mappings.find(m => m.uri === k);
+                            if (!existingMapping) {
+                                const singleDomainSourceUrl = item.sourceUrl.replace('www.', '');
+                                mappings.push({
+                                    host: null,
+                                    uri: k,
+                                    targetUrl: v,
+                                    sourceUrl: singleDomainSourceUrl,
+                                    targetFullUrl: item.targetUrl
+                                });
+                                validCount++;
+                            }
+                        });
+
+                        console.log('添加www映射后的validCount:', validCount);
+                    }
+
+                    const code = generateSingleDomainCode(mappings, targetHost);
+
+                    singleDomainHost = targetHost;
+                    console.log('单域名检测到的host:', singleDomainHost);
+
+                    return {
+                        mappings,
+                        code,
+                        processedCount,
+                        validCount,
+                        totalCount: data.length - 1,
+                        host: targetHost
+                    };
+                }
+
+                function generateSingleDomainCode(mappings, host) {
+                    if (!host) {
+                        return '';
+                    }
+
+                    let code = '';
+                    code += 'redirect_uri = [\n';
+
+                    mappings.forEach((item, index) => {
+                        const isLast = index === mappings.length - 1;
+                        const comma = isLast ? '' : ',';
+                        const targetValue = item.targetFullUrl || item.targetUrl;
+                        code += `    '${item.uri}' = '${targetValue}'${comma}\n`;
+                    });
+
+                    code += ']\n\n';
+                    code += 'def process_single_redirects() {\n';
+                    code += `    for k, v in redirect_uri {\n`;
+
+                    const wwwHost = host.startsWith('www.') ? host : 'www.' + host;
+                    const nonWwwHost = host.startsWith('www.') ? host.substring(4) : host;
+
+                    code += `        if and(eq($host, '${host}')), eq($uri, k)) {\n`;
+                    code += `            rewrite(v, 'enhance_redirect', 301)\n`;
+                    code += '        }\n';
+                    code += '    }\n';
+                    code += '}\n\n';
+
+                    code += 'def redirect_to_www() {\n';
+                    code += `    if eq($host, '${nonWwwHost}') {\n`;
+                    code += `        rewrite('https://${wwwHost}', 'redirect', 301)\n`;
+                    code += '    }\n';
+                    code += '}\n\n';
+                    code += 'process_single_redirects()\n';
+                    code += 'redirect_to_www()\n';
+                    return code;
+                }
+
+                function processLanguageSubdomainData(data) {
+                    const languageSubdomains = new Map();
+                    let processedCount = 0;
+
+                    for (let i = 1; i < data.length; i++) {
+                        const row = data[i] || [];
+                        if (row.length < 2) continue;
+
+                        processedCount++;
+
+                        const col1 = String(row[0] || '').trim();
+                        const col2 = String(row[1] || '').trim();
+
+                        if (!col1 || !col2) continue;
+
+                        const { host, uri } = extractHostAndUri(col1);
+
+                        if (!host || !uri) continue;
+
+                        const targetUrl = col2;
+
+                        const hostParts = host.split('.');
+                        if (hostParts.length >= 2) {
+                            const firstPart = hostParts[0];
+                            if (firstPart === 'www') {
+                                continue;
+                            }
+                            if (!/^[a-z]{2}$/.test(firstPart)) {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+
+                        const lang = hostParts[0];
+
+                        if (!languageSubdomains.has(lang)) {
+                            languageSubdomains.set(lang, {
+                                host: host,
+                                mappings: [],
+                                targetHost: null
+                            });
+                        }
+
+                        const langData = languageSubdomains.get(lang);
+
+                        if (!langData.targetHost) {
+                            const { host: targetHostFromUrl } = extractHostAndUri(targetUrl);
+                            if (targetHostFromUrl) {
+                                langData.targetHost = targetHostFromUrl;
+                            }
+                        }
+
+                        if (uri === '/' && extractPathOnly(targetUrl) === '/') continue;
+
+                        langData.mappings.push({
+                            uri,
+                            targetUrl
+                        });
+                    }
+
+                    const languageCodes = {};
+                    const languageFullHostMappings = new Map();
+
+                    languageSubdomains.forEach((data, lang) => {
+                        const code = generateLanguageSubdomainCode(lang, data.host, data.mappings, data.targetHost);
+                        languageCodes[lang] = code;
+                        languageFullHostMappings.set(lang, data.host);
+                    });
+
+                    console.log('小语种检测到的语言:', Array.from(languageSubdomains.keys()));
+                    console.log('小语种完整host映射:', Object.fromEntries(languageFullHostMappings));
+
+                    return {
+                        languageSubdomains: Array.from(languageSubdomains.keys()),
+                        languageCodes,
+                        languageFullHostMappings,
+                        processedCount,
+                        totalCount: data.length - 1
+                    };
+                }
+
+                function generateLanguageSubdomainCode(lang, host, mappings, targetHost) {
+                    if (!host) {
+                        return '';
+                    }
+
+                    if (!targetHost) {
+                        return '';
+                    }
+
+                    const wwwHost = host.replace(/^[a-z]{2}\./, 'www.');
+                    let code = '';
+
+                    if (mappings.length > 0) {
+                        code += 'redirect_uri = [\n';
+
+                        mappings.forEach((item, index) => {
+                            const isLast = index === mappings.length - 1;
+                            const comma = isLast ? '' : ',';
+                            code += `    '${item.uri}' = '${item.targetUrl}'${comma}\n`;
+                        });
+
+                        code += ']\n\n';
+                        code += 'def process_language_redirects() {\n';
+                        code += `    for k, v in redirect_uri {\n`;
+                        code += `        if and(eq($host, '${host}')), eq($uri, k)) {\n`;
+                        code += `            rewrite(v, 'enhance_redirect', 301)\n`;
+                        code += '        }\n';
+                        code += '    }\n';
+                        code += '}\n\n';
+                        code += 'process_language_redirects()\n\n';
+                    }
+
+                    return code;
+                }
+
+                function generateLanguageSubdomainCodes(host, languageSubdomains, languageHostMappings, languageFullHostMappings) {
+                    if (!host) {
+                        return {};
+                    }
+
+                    const codes = {};
+                    const wwwHost = host.startsWith('www.') ? host : 'www.' + host;
+
+
+                    languageSubdomains.forEach(lang => {
+                        const targetHost = languageHostMappings.get(lang) || wwwHost;
+                        const fullHost = languageFullHostMappings.get(lang) || host;
+                        let code = '';
+
+                        codes[lang] = code;
+                    });
+
+                    return codes;
+                }
+
+                function extractPathOnly(url) {
+                    if (!url) return null;
+
+                    let result = url;
+
+                    if (result.startsWith('http://')) {
+                        result = result.substring(7);
+                    } else if (result.startsWith('https://')) {
+                        result = result.substring(8);
+                    }
+
+                    const firstSlashIndex = result.indexOf('/');
+
+                    if (firstSlashIndex !== -1) {
+                        result = result.substring(firstSlashIndex);
+                    } else {
+                        result = '/';
+                    }
+
+                    return result;
+                }
+
+                function extractHostAndUri(url) {
+                    try {
+                        let parsedUrl = url;
+                        if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('//')) {
+                            parsedUrl = 'http://' + url;
+                        } else if (url.startsWith('//')) {
+                            parsedUrl = 'http:' + url;
+                        }
+
+                        const urlObj = new URL(parsedUrl);
+                        const host = urlObj.hostname;
+                        const uri = urlObj.pathname || '/';
+
+                        const finalUri = uri === '' ? '/' : uri;
+
+                        return { host, uri: finalUri };
+                    } catch (error) {
+                        console.error('URL解析失败:', url, error);
+                        if (url.includes('://')) {
+                            const parts = url.split('://')[1].split('/');
+                            const host = parts[0];
+                            const uri = '/' + parts.slice(1).join('/');
+                            return { host, uri: uri === '/' ? '/' : uri };
+                        }
+                        return { host: null, uri: null };
+                    }
+                }
+
+                function displayResult(result, type) {
+                    const codeOutput = document.getElementById(`${type}CodeOutput`);
+
+                    if (!codeOutput) {
+                        console.error(`代码输出元素未找到: ${type}CodeOutput`);
+                        return;
+                    }
+
+                    codeOutput.textContent = result.code;
+                    highlightCode(type);
+                    console.log(`${type}处理详情:`, result);
+                }
+
+                function displayLanguageResults(singleResult) {
+                    if (!languageResultContainer) {
+                        console.error('语言结果容器未找到');
+                        return;
+                    }
+
+                    languageResultContainer.innerHTML = '';
+
+                    if (!singleResult.languageSubdomains || singleResult.languageSubdomains.length === 0) {
+                        console.log('没有语言子域名需要处理');
+                        return;
+                    }
+                    singleResult.languageSubdomains.forEach(lang => {
+                        console.log('处理语言子域名:', lang);
+                        const resultArea = document.createElement('div');
+                        resultArea.className = 'result-area show';
+                        resultArea.id = `language-${lang}ResultBox`;
+
+                        const header = document.createElement('div');
+                        header.className = 'result-header';
+
+                        const title = document.createElement('h3');
+                        const languageFullHost = singleResult.languageFullHostMappings ? singleResult.languageFullHostMappings.get(lang) : `${lang}.${singleResult.host}`;
+                        title.textContent = `${lang} 语言子域名重定向代码 (${languageFullHost})`;
+
+                        const buttons = document.createElement('div');
+                        buttons.className = 'result-buttons';
+
+                        const previewBtn = document.createElement('button');
+                        previewBtn.className = 'preview-btn';
+                        previewBtn.id = `language-${lang}PreviewBtn`;
+                        previewBtn.textContent = '预览';
+                        previewBtn.addEventListener('click', () => toggleCodePreview(`language-${lang}`));
+
+                        const copyBtn = document.createElement('button');
+                        copyBtn.className = 'copy-btn';
+                        copyBtn.id = `language-${lang}CopyBtn`;
+                        copyBtn.textContent = '复制代码';
+                        copyBtn.addEventListener('click', () => copyLanguageCode(lang));
+
+                        buttons.appendChild(previewBtn);
+                        buttons.appendChild(copyBtn);
+
+                        header.appendChild(title);
+                        header.appendChild(buttons);
+
+                        const codeContainer = document.createElement('div');
+                        codeContainer.className = 'code-container collapsed';
+                        codeContainer.id = `language-${lang}CodeContainer`;
+
+                        const pre = document.createElement('pre');
+                        pre.id = `language-${lang}CodeOutput`;
+                        pre.textContent = singleResult.languageCodes[lang];
+
+                        codeContainer.appendChild(pre);
+                        resultArea.appendChild(header);
+                        resultArea.appendChild(codeContainer);
+
+                        languageResultContainer.appendChild(resultArea);
+
+                        highlightLanguageCode(lang);
+                    });
+                }
+
+                function highlightLanguageCode(lang) {
+                    const codeElement = document.getElementById(`language-${lang}CodeOutput`);
+
+                    if (!codeElement) {
+                        console.error(`语言代码元素未找到: language-${lang}CodeOutput`);
+                        return;
+                    }
+
+                    let code = codeElement.textContent;
+
+                    code = code
+                        .replace(/(redirect_uri|def|for|in|if|eq|and|rewrite|process_language_redirects|redirect_language_to_www|for_func)/g, '<span class="code-keyword">$1</span>')
+                        .replace(/(redirect|enhance_redirect)/g, '<span class="code-function">$1</span>')
+                        .replace(/'[^']*'/g, '<span class="code-string">$&</span>')
+                        .replace(/(\/\/.*)/g, '<span class="code-comment">$1</span>');
+
+                    codeElement.innerHTML = code;
+                }
+
+                function highlightCode(type) {
+                    const codeElement = document.getElementById(`${type}CodeOutput`);
+
+                    if (!codeElement) {
+                        console.error(`代码元素未找到: ${type}CodeOutput`);
+                        return;
+                    }
+
+                    let code = codeElement.textContent;
+
+                    code = code
+                        .replace(/(redirect_uri|def|for|in|if|eq|and|rewrite|process_single_redirects|redirect_to_www|for_func)/g, '<span class="code-keyword">$1</span>')
+                        .replace(/(redirect|enhance_redirect)/g, '<span class="code-function">$1</span>')
+                        .replace(/'[^']*'/g, '<span class="code-string">$&</span>')
+                        .replace(/(\/\/.*)/g, '<span class="code-comment">$1</span>');
+
+                    codeElement.innerHTML = code;
+                }
+
+                async function copyToClipboard(type) {
+                    const codeElement = document.getElementById(`${type}CodeOutput`);
+                    const copyBtn = document.getElementById(`${type}CopyBtn`);
+
+                    if (!codeElement || !copyBtn) {
+                        console.error(`复制元素未找到: ${type}CodeOutput 或 ${type}CopyBtn`);
+                        return;
+                    }
+
+                    const code = codeElement.textContent;
+
+                    try {
+                        await navigator.clipboard.writeText(code);
+
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '✅ 已复制!';
+                        copyBtn.classList.add('copied');
+
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+
+                        let host = null;
+                        if (type === 'multi') {
+                            host = multiDomainHost;
+                        } else if (type === 'single') {
+                            host = singleDomainHost;
+                        }
+
+                        if (host) {
+                            console.log(`跳转到阿里云EdgeScript页面: https://cdn.console.aliyun.com/domain/detail/${host}/edgescript/editor`);
+                            const aliyunUrl = `https://cdn.console.aliyun.com/domain/detail/${host}/edgescript/editor`;
+                            window.open(aliyunUrl, '_blank');
+                        } else {
+                            console.error('无法获取域名信息');
+                        }
+                    } catch (err) {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = code;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '✅ 已复制!';
+                        copyBtn.classList.add('copied');
+
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+
+                        let host = null;
+                        if (type === 'multi') {
+                            host = multiDomainHost;
+                        } else if (type === 'single') {
+                            host = singleDomainHost;
+                        }
+
+                        if (host) {
+                            console.log(`跳转到阿里云EdgeScript页面: ${host}`);
+                            const aliyunUrl = `https://cdn.console.aliyun.com/domain/detail/${host}/edgescript/editor`;
+                            window.open(aliyunUrl, '_blank');
+                        } else {
+                            console.error('无法获取域名信息');
+                        }
+                    }
+                }
+
+                function toggleCodePreview(type) {
+                    const codeContainer = document.getElementById(`${type}CodeContainer`);
+
+                    if (!codeContainer) {
+                        console.error(`代码容器未找到: ${type}CodeContainer`);
+                        return;
+                    }
+
+                    if (activeCodeContainer && activeCodeContainer !== codeContainer) {
+                        activeCodeContainer.classList.add('collapsed');
+                    }
+
+                    codeContainer.classList.toggle('collapsed');
+
+                    if (codeContainer.classList.contains('collapsed')) {
+                        activeCodeContainer = null;
+                    } else {
+                        activeCodeContainer = codeContainer;
+                    }
+                }
+
+                async function copyLanguageCode(lang) {
+                    const codeElement = document.getElementById(`language-${lang}CodeOutput`);
+                    const copyBtn = document.getElementById(`language-${lang}CopyBtn`);
+
+                    if (!codeElement || !copyBtn) {
+                        console.error(`语言代码复制元素未找到: language-${lang}CodeOutput 或 language-${lang}CopyBtn`);
+                        return;
+                    }
+
+                    const code = codeElement.textContent;
+
+                    try {
+                        await navigator.clipboard.writeText(code);
+
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '✅ 已复制!';
+                        copyBtn.classList.add('copied');
+
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+
+                        if (languageFullHostMappings && languageFullHostMappings.has(lang)) {
+                            const languageSubdomainHost = languageFullHostMappings.get(lang);
+                            console.log(`跳转到阿里云EdgeScript页面: ${languageSubdomainHost}`);
+                            const aliyunUrl = `https://cdn.console.aliyun.com/domain/detail/${languageSubdomainHost}/edgescript/editor`;
+                            window.open(aliyunUrl, '_blank');
+                        } else if (singleDomainHost) {
+                            const languageSubdomainHost = `${lang}.${singleDomainHost}`;
+                            console.log(`跳转到阿里云EdgeScript页面: ${languageSubdomainHost}`);
+                            const aliyunUrl = `https://cdn.console.aliyun.com/domain/detail/${languageSubdomainHost}/edgescript/editor`;
+                            window.open(aliyunUrl, '_blank');
+                        } else {
+                            console.error('无法获取域名信息');
+                        }
+                    } catch (err) {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = code;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '✅ 已复制!';
+                        copyBtn.classList.add('copied');
+
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+
+                        if (languageFullHostMappings && languageFullHostMappings.has(lang)) {
+                            const languageSubdomainHost = languageFullHostMappings.get(lang);
+                            console.log(`跳转到阿里云EdgeScript页面: ${languageSubdomainHost}`);
+                            const aliyunUrl = `https://cdn.console.aliyun.com/domain/detail/${languageSubdomainHost}/edgescript/editor`;
+                            window.open(aliyunUrl, '_blank');
+                        } else if (singleDomainHost) {
+                            const languageSubdomainHost = `${lang}.${singleDomainHost}`;
+                            console.log(`跳转到阿里云EdgeScript页面: ${languageSubdomainHost}`);
+                            const aliyunUrl = `https://cdn.console.aliyun.com/domain/detail/${languageSubdomainHost}/edgescript/editor`;
+                            window.open(aliyunUrl, '_blank');
+                        } else {
+                            console.error('无法获取域名信息');
+                        }
+                    }
+                }
+
+                function updateStats(result) {
+                    const totalRows = document.getElementById('totalRows');
+                    const processedRows = document.getElementById('processedRows');
+                    const validRows = document.getElementById('validRows');
+
+                    if (totalRows) totalRows.textContent = result.totalCount;
+                    if (processedRows) processedRows.textContent = result.processedCount;
+                    if (validRows) validRows.textContent = result.validCount;
+                }
+
+                function showError(message) {
+                    errorMessage.textContent = message;
+                    errorMessage.classList.add('show');
+
+                    setTimeout(() => {
+                        errorMessage.classList.remove('show');
+                    }, 3000);
+                }
+
+                function clearError() {
+                    errorMessage.classList.remove('show');
+                }
+
+                function formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                }
+            });
+        </script>
+    </body>
+
+</html>
