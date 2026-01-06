@@ -1768,7 +1768,9 @@
                             console.warn(`发现不同源域名: ${host} (预期: ${targetHost})`);
                         }
 
-                        if (uri === '/' && extractPathOnly(targetUrl) === '/') continue;
+                        const { host: targetHostFromUrl } = extractHostAndUri(targetUrl);
+                        const isSameDomain = targetHostFromUrl === host;
+                        if (uri === '/' && extractPathOnly(targetUrl) === '/' && isSameDomain) continue;
 
                         mappings.push({
                             host,
