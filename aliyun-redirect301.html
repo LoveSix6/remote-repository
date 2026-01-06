@@ -1493,6 +1493,12 @@
                             const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
                             excelData = jsonData;
+
+                            if (excelData.length > 650) {
+                                showError('Excel行数超过650，需要对Excel进行拆分，每个表行数不能大于660（注意第一行空出来，不解析）');
+                                return;
+                            }
+
                             showPreview(jsonData);
                         } catch (error) {
                             showError('读取Excel文件失败: ' + error.message);
@@ -1560,6 +1566,11 @@
                 function processExcel() {
                     if (!excelData || excelData.length < 2) {
                         showError('Excel文件数据不足，至少需要2行数据（包含表头）');
+                        return;
+                    }
+
+                    if (excelData.length > 650) {
+                        showError('Excel行数超过650，需要对Excel进行拆分，每个表行数不能大于660（注意第一行空出来，不解析）');
                         return;
                     }
 
@@ -2342,10 +2353,6 @@
                 function showError(message) {
                     errorMessage.textContent = message;
                     errorMessage.classList.add('show');
-
-                    setTimeout(() => {
-                        errorMessage.classList.remove('show');
-                    }, 3000);
                 }
 
                 function clearError() {
