@@ -2384,13 +2384,17 @@
                 function updateTestStats(result) {
                     testStatsData.completed++;
 
-                    if (result.error || (result.status >= 400 && result.status < 600)) {
+                    // 根据方块数据的分类方式计算成功和失败
+                    // 成功：200-299 (成功) + 300-399 (重定向)
+                    // 失败：400-499 (客户端错误) + 500+ (服务器错误) + 其他 (网络错误)
+                    const status = result.status || 0;
+                    if (result.error || (status >= 400)) {
                         testStatsData.failed++;
                     } else {
                         testStatsData.success++;
                     }
 
-                    const statusCode = String(result.status || '0');
+                    const statusCode = String(status);
                     if (!testStatsData.detailed[statusCode]) {
                         testStatsData.detailed[statusCode] = 0;
                     }
