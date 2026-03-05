@@ -422,6 +422,31 @@
                 animation: fadeIn 0.5s ease;
             }
 
+            .export-btn {
+                background: linear-gradient(135deg, rgba(0, 122, 255, 0.8), rgba(88, 86, 214, 0.8));
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 10px rgba(0, 122, 255, 0.3);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+
+            .export-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(0, 122, 255, 0.4);
+                background: linear-gradient(135deg, rgba(0, 122, 255, 1), rgba(88, 86, 214, 1));
+            }
+
+            .export-btn:active {
+                transform: translateY(0);
+            }
+
             @keyframes fadeIn {
                 from {
                     opacity: 0;
@@ -1836,9 +1861,16 @@
                         </div>
                         <!-- 检测统计信息 -->
                         <div class="test-stats" id="testStats">
-                            共检测 <span id="totalLinks">0</span> 个链接，
-                            成功: <span id="successCount">0</span>,
-                            失败: <span id="failedCount">0</span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div>
+                                    共检测 <span id="totalLinks">0</span> 个链接，
+                                    成功: <span id="successCount">0</span>,
+                                    失败: <span id="failedCount">0</span>
+                                </div>
+                                <button class="export-btn" id="exportBtn" style="display: none;" title="导出非200和非301状态码的记录">
+                                    📥 导出异常链接
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1972,6 +2004,7 @@
                 const totalLinks = document.getElementById('totalLinks');
                 const successCount = document.getElementById('successCount');
                 const failedCount = document.getElementById('failedCount');
+                const exportBtn = document.getElementById('exportBtn');
 
                 // 状态码气泡相关元素
                 const statusBubblesContainer = document.getElementById('statusBubblesContainer');
@@ -2012,6 +2045,7 @@
                 singlePreviewBtn.addEventListener('click', () => toggleCodePreview('single'));
                 backBtn.addEventListener('click', handleBack);
                 detectBtn.addEventListener('click', startLinkTest);
+                exportBtn.addEventListener('click', exportNonSuccessLinks);
                 closeModalBtn.addEventListener('click', closeStatusModal);
 
                 // 点击模态框外部关闭
@@ -2231,6 +2265,7 @@
                                 // 将原始链接信息添加到结果中
                                 const originalLink = links[batchIndex * CONCURRENT_LIMIT + i];
                                 result.sourceUrl = originalLink.sourceUrl;
+                                result.rowIndex = originalLink.rowIndex;
                                 result.excelRow = originalLink.rowIndex + 1;
                                 result.type = 'Excel链接';
 
@@ -2255,19 +2290,93 @@
                         await new Promise(resolve => setTimeout(resolve, 500));
                     }
 
-                    // 检测完成
-                    isTesting = false;
-                    detectBtn.classList.remove('testing');
-                    detectBtn.classList.remove('disabled');
-                    detectBtn.title = '重新检测链接';
-                    detectStatus.textContent = `检测完成: ${testStatsData.success} 成功, ${testStatsData.failed} 失败`;
+                    // 检查是否有504状态码的链接需要重新检测
+                    const timeoutLinks = testResults.filter(link => {
+                        return link.status === 504;
+                    });
 
-                    // 隐藏进度条，显示统计信息
-                    progressContainer.classList.remove('show');
-                    testStats.classList.add('show');
+                    // 如果有504状态码的链接，重新检测
+                    if (timeoutLinks.length > 0) {
+                        detectStatus.textContent = `正在重新检测 ${timeoutLinks.length} 个超时链接...`;
 
-                    // 更新状态码气泡
-                    updateStatusBubbles();
+                        // 重新检测504链接
+                        setTimeout(async () => {
+                            for (const link of timeoutLinks) {
+                                try {
+                                    const retryResult = await checkUrl(link.url);
+                                    // 更新结果
+                                    const index = testResults.findIndex(item => item.sourceUrl === link.sourceUrl);
+                                    if (index !== -1) {
+                                        testResults[index] = retryResult;
+                                        testResults[index].rowIndex = link.rowIndex;
+                                        testResults[index].excelRow = link.excelRow;
+                                        testResults[index].type = link.type;
+                                    }
+                                } catch (error) {
+                                    console.error('重新检测出错:', error);
+                                }
+                            }
+
+                            // 重新计算统计信息
+                            resetTestStats();
+                            testStatsData.total = testResults.length;
+                            testResults.forEach(result => updateTestStats(result));
+
+                            // 检测完成
+                            isTesting = false;
+                            detectBtn.classList.remove('testing');
+                            detectBtn.classList.remove('disabled');
+                            detectBtn.title = '重新检测链接';
+                            detectStatus.textContent = `检测完成: ${testStatsData.success} 成功, ${testStatsData.failed} 失败`;
+
+                            // 隐藏进度条，显示统计信息
+                            progressContainer.classList.remove('show');
+                            testStats.classList.add('show');
+
+                            // 检查是否有非200和非301状态码的记录
+                            const nonSuccessLinks = testResults.filter(link => {
+                                const status = link.status || 0;
+                                return status !== 200 && status !== 301;
+                            });
+
+                            // 如果有异常链接，显示导出按钮
+                            if (nonSuccessLinks.length > 0) {
+                                exportBtn.style.display = 'block';
+                            } else {
+                                exportBtn.style.display = 'none';
+                            }
+
+                            // 更新状态码气泡
+                            updateStatusBubbles();
+                        }, 1000);
+                    } else {
+                        // 检测完成
+                        isTesting = false;
+                        detectBtn.classList.remove('testing');
+                        detectBtn.classList.remove('disabled');
+                        detectBtn.title = '重新检测链接';
+                        detectStatus.textContent = `检测完成: ${testStatsData.success} 成功, ${testStatsData.failed} 失败`;
+
+                        // 隐藏进度条，显示统计信息
+                        progressContainer.classList.remove('show');
+                        testStats.classList.add('show');
+
+                        // 检查是否有非200和非301状态码的记录
+                        const nonSuccessLinks = testResults.filter(link => {
+                            const status = link.status || 0;
+                            return status !== 200 && status !== 301;
+                        });
+
+                        // 如果有异常链接，显示导出按钮
+                        if (nonSuccessLinks.length > 0) {
+                            exportBtn.style.display = 'block';
+                        } else {
+                            exportBtn.style.display = 'none';
+                        }
+
+                        // 更新状态码气泡
+                        updateStatusBubbles();
+                    }
                 }
 
                 function updateTestStats(result) {
@@ -2477,6 +2586,54 @@
                 function closeStatusModal() {
                     statusModalOverlay.classList.remove('show');
                     document.body.style.overflow = '';
+                }
+
+                // 导出非200和非301状态码的记录
+                function exportNonSuccessLinks() {
+                    // 过滤出非200和非301状态码的记录
+                    const nonSuccessLinks = testResults.filter(link => {
+                        const status = link.status || 0;
+                        return status !== 200 && status !== 301;
+                    });
+
+                    if (nonSuccessLinks.length === 0) {
+                        showError('没有非200和非301状态码的记录需要导出');
+                        return;
+                    }
+
+                    // 准备导出数据
+                    const exportData = [['源URL', '目标URL']];
+
+                    // 遍历非成功链接，添加到导出数据
+                    nonSuccessLinks.forEach(link => {
+                        // 找到原始Excel中的对应行数据
+                        const originalRow = excelData[link.rowIndex] || [];
+                        const targetUrl = String(originalRow[1] || '').trim();
+
+                        exportData.push([
+                            link.sourceUrl,
+                            targetUrl
+                        ]);
+                    });
+
+                    // 创建工作簿和工作表
+                    const workbook = XLSX.utils.book_new();
+                    const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+
+                    // 设置列宽
+                    worksheet['!cols'] = [
+                        { wch: 80 }, // 源URL列宽
+                        { wch: 80 }  // 目标URL列宽
+                    ];
+
+                    // 将工作表添加到工作簿
+                    XLSX.utils.book_append_sheet(workbook, worksheet, '异常链接');
+
+                    // 导出Excel文件
+                    XLSX.writeFile(workbook, `异常链接导出_${new Date().getTime()}.xlsx`);
+
+                    // 显示成功提示
+                    detectStatus.textContent = `已导出 ${nonSuccessLinks.length} 个异常链接`;
                 }
 
                 // URL检测函数
